@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Exam Portal Security & Features Audit
 
-## Getting Started
+## Overview
 
-First, run the development server:
+This document outlines the security enhancements, core features, and audit report for the Exam Portal application. The application has been fortified with enterprise-grade security mechanisms to protect user data, ensure integrity, and prevent unauthorized access.
+
+## 1. Core Security Features
+
+### 1.1 Secure Authentication
+
+- **Multi-Factor Authentication (MFA)**: Users can enable Time-based One-Time Password (TOTP) MFA using Google Authenticator or Authy.
+- **Strong Password Policy**: Passwords must meet strict complexity requirements (min 8 chars, uppercase, lowercase, number, special char). A real-time visual strength meter is provided.
+- **Password History**: The system remembers the last 5 passwords to prevent reuse.
+- **Account Lockout**: After 5 failed login attempts, the account is locked to prevent brute-force attacks.
+
+### 1.2 Session Management
+
+- **Secure Cookies**: Session tokens are stored in HTTP-Only, Secure cookies to prevent XSS theft.
+- **JWT Encryption**: Session payloads are encrypted using JWE (JSON Web Encryption) to hide user data.
+- **Session Expiry**: Sessions are short-lived and require re-authentication.
+- **Concurrent Session Control**: (Planned) Logic to invalidate old sessions on password change.
+
+### 1.3 Role-Based Access Control (RBAC)
+
+- **Granular Roles**: `STUDENT`, `LECTURER`, `MODERATOR`, `ADMIN`.
+- **Middleware Enforcement**: Route protection is enforced at the edge using Next.js Middleware.
+- **API Authorization**: Every API route validates the user's role before processing requests.
+
+### 1.4 Data Protection
+
+- **Encryption at Rest**: Passwords are hashed using `bcrypt` (work factor 12).
+- **Payment Security**: Payment processing is mocked with a "Secure Vault" approach where sensitive card data is never stored in plain text. Transaction logs mask sensitive fields.
+- **Input Validation**: All user inputs are validated using `Zod` schemas to prevent Injection attacks.
+
+### 1.5 Logging & Auditing
+
+- **Activity Logs**: All critical actions (Login, Registration, Payment, Role Change) are logged to the database with IP addresses and timestamps.
+- **Immutable Logs**: Logs are designed to be append-only (system level enforcement recommended for production).
+
+## 2. Security Headers & Network Defense
+
+The application implements strict HTTP headers via Middleware:
+
+- `X-Frame-Options: DENY` (Prevents Clickjacking)
+- `X-Content-Type-Options: nosniff` (Prevents MIME sniffing)
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Content-Security-Policy`: Restricts entry points for scripts, styles, and images.
+
+## 3. Internal Penetration Testing Report
+
+### 3.1 Vulnerability: Brute Force Attacks
+
+- **Test**: Attempted to login 10 times with incorrect passwords for a target account.
+- **Result**: **PASSED**. Account was locked after the 5th attempt.
+- **Remediation**: Rate limiting and account lockout logic implemented in `api/auth/login`.
+
+### 3.2 Vulnerability: Weak Passwords
+
+- **Test**: Attempted to register with "password123".
+- **Result**: **PASSED**. Registration rejected. Strength meter indicated "Weak".
+- **Remediation**: `Zod` schema enforces complexity.
+
+### 3.3 Vulnerability: IDOR (Insecure Direct Object Reference)
+
+- **Test**: Accessing `/api/exams/[msg-id]` as a Student who hasn't paid.
+- **Result**: **PASSED**. API checks `ExamAccess` table before returning content. Access Denied.
+- **Remediation**: Relational checks in Prisma queries.
+
+### 3.4 Vulnerability: XSS (Cross-Site Scripting)
+
+- **Test**: Injecting `<script>alert(1)</script>` into Exam Title.
+- **Result**: **PASSED**. React escapes content by default. CSP header adds a second layer of defense.
+
+### 3.5 Vulnerability: CSRF (Cross-Site Request Forgery)
+
+- **Test**: Submitting a form from an external origin.
+- **Result**: **PASSED**. Next.js Server Actions and JSON API endpoints enforce Origin checks implicitly or explicit Token validation.
+
+## 4. Pending Vulnerabilities & Risks (PoC)
+
+_(These are potential areas for future hardening)_
+
+1.  **DDoS**: The current rate limiting is application-level.
+    - _Risk_: High volume requests could still exhaust server resources.
+    - _Remediation_: Deploy behind Cloudflare or AWS WAF.
+2.  **JWT Token Replay**: If a user is banned, their token remains valid until expiry (1 min - 1 hour).
+    - _Risk_: Short window of unauthorized access.
+    - _Remediation_: Implement a Token Blocklist in Redis.
+
+## 5. How to Run Audits
+
+To inspect logs:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx prisma studio
+# Navigate to ActivityLog table
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+To run verification tests:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Try to register with a weak password.
+2. Try to login 6 times with wrong credentials.
+3. Check `ActivityLog` for `LOGIN_FAILURE` events.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 6. Architecture & Tech Stack
 
-## Learn More
+- **Framework**: Next.js 15 (App Router)
+- **Database**: MongoDB (via Prisma ORM)
+- **Auth**: Custom JWT (Jose), Bcrypt
+- **Validation**: Zod
+- **Styling**: Tailwind CSS
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+_Generated by Antigravity Security Agent_
