@@ -83,12 +83,14 @@ export async function POST(req: NextRequest) {
 
     // Log Activity
     try {
-      const { ActivityLog } = await import('@/models/ActivityLog');
-      await ActivityLog.create({
-          userId: user._id,
+      const { prisma } = await import('@/lib/db');
+      await prisma.activityLog.create({
+        data: {
+          userId: user._id.toString(),
           action: 'LOGIN_SUCCESS',
           ipAddress: req.headers.get('x-forwarded-for') || 'unknown',
           metadata: { role: user.role }
+        }
       });
     } catch (logError) {
       console.error("LOGGING_ERROR", logError);

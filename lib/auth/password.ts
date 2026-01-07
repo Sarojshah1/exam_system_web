@@ -18,14 +18,14 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 
-import { PasswordHistory } from '@/models/PasswordHistory';
-import dbConnect from '@/lib/mongoose';
+import { prisma } from '@/lib/db';
 
 export async function isPasswordInHistory(userId: string, newPassword: string): Promise<boolean> {
-  await dbConnect();
-  const history = await PasswordHistory.find({ userId })
-    .sort({ createdAt: -1 })
-    .limit(5);
+  const history = await prisma.passwordHistory.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: 5 // Check last 5 passwords
+  });
 
   for (const record of history) {
     const isMatch = await bcrypt.compare(newPassword, record.passwordHash);
@@ -36,19 +36,28 @@ export async function isPasswordInHistory(userId: string, newPassword: string): 
 }
 
 export async function addToPasswordHistory(userId: string, passwordHash: string) {
-  await dbConnect();
-  await PasswordHistory.create({
+  // Use sequential operations to be safe if no Replica Set, though create usually fine
+  await prisma.passwordHistory.create({
+    data: {
       userId,
       passwordHash
+    }
   });
 
   // Optional: Clean up old history (keep only last 5)
-  // Get all history
-  const allHistory = await PasswordHistory.find({ userId }).sort({ createdAt: -1 });
-  
-  if (allHistory.length > 5) {
-     const toDelete = allHistory.slice(5);
-     const idsToDelete = toDelete.map(h => h._id);
-     await PasswordHistory.deleteMany({ _id: { $in: idsToDelete } });
+  const history = await prisma.passwordHistory.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    skip: 4
+  });
+
+  if (history.length > 0) {
+    await prisma.passwordHistory.deleteMany({
+      where: {
+        id: {
+          in: history.map(h => h.id)
+        }
+      }
+    });
   }
 }

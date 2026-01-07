@@ -15,7 +15,7 @@ const PUBLIC_ROUTES = ['/login', '/register', '/api/auth/login', '/api/auth/regi
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const isPublic = PUBLIC_ROUTES.some(r => path.startsWith(r));
+const isPublic = path === '/' || PUBLIC_ROUTES.some(r => path.startsWith(r));
 
   if (isPublic) {
     const response = NextResponse.next();
@@ -52,7 +52,7 @@ export default async function middleware(req: NextRequest) {
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';");
     return response;
-  } catch (error) {
+  } catch {
     return NextResponse.redirect(new URL('/login', req.nextUrl));
   }
 }

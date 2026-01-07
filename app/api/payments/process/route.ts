@@ -82,13 +82,14 @@ export async function POST(req: NextRequest) {
       });
 
       // 5. Audit Log (Securely)
-      // 5. Audit Log (Mongoose)
-      const { ActivityLog } = await import('@/models/ActivityLog');
-      await ActivityLog.create({
-          userId,
-          action: 'PAYMENT_SUCCESS_SECURE',
-          resource: examId,
-          metadata: { transactionId, maskedCard }
+      // 5. Audit Log (Securely)
+      await prisma.activityLog.create({
+        data: {
+            userId,
+            action: 'PAYMENT_SUCCESS_SECURE',
+            resource: examId,
+            metadata: { transactionId, maskedCard }
+        }
       });
 
       return NextResponse.json({ message: 'Payment Successful', transactionId });

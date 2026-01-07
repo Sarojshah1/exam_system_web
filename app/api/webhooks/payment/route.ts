@@ -47,12 +47,13 @@ export async function POST(req: NextRequest) {
 
     // 4. Audit Log
     // 4. Audit Log
-    const { ActivityLog } = await import('@/models/ActivityLog');
-    await ActivityLog.create({
-        userId: payment.userId,
-        action: 'PAYMENT_SUCCESS',
-        resource: payment.examId,
-        metadata: { transactionId, provider, amount: payment.amount }
+    await prisma.activityLog.create({
+        data: {
+            userId: payment.userId,
+            action: 'PAYMENT_SUCCESS',
+            resource: payment.examId,
+            metadata: { transactionId, provider, amount: payment.amount }
+        }
     });
 
     return NextResponse.json({ message: 'Payment verified and access granted' });

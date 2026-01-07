@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/auth/session";
 import dbConnect from "@/lib/mongoose";
-import ActivityLog from "@/models/ActivityLog";
+import { ActivityLog } from "@/models/ActivityLog";
 import { redirect } from "next/navigation";
 import { Role } from "@/lib/rbac-definitions";
 import { Shield, AlertTriangle, Eye } from "lucide-react";
